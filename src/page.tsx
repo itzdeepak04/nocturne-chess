@@ -4,6 +4,7 @@ import { Chess, Square } from 'chess.js';
 import { Volume2, VolumeX, RotateCcw, RefreshCw, FlipVertical2, Crown, Maximize2, Minimize2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import Board from './board';
+import {enterFullscreen,exitFullscreen} from './fullscreen';
 import ChessWorker from './chess.worker?worker';
 import { chooseMove } from './engine.mjs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -19,7 +20,7 @@ export default function Home(){
  useEffect(()=>{const context=(document as any).modelContext;if(!context?.registerTool)return;const life=new AbortController();const tools=[{name:'read_chess_position',description:'Read the current chess position and legal moves.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>({fen:g.fen(),legalMoves:g.moves(),history:g.history()})},{name:'make_chess_move',description:'Play a legal chess move on the visible board.',inputSchema:{type:'object',properties:{from:{type:'string'},to:{type:'string'},promotion:{type:'string',enum:['q','r','b','n']}},required:['from','to'],additionalProperties:false},execute:(i:any)=>{if(g.isGameOver())return {error:'The game is over.'};if(!/^[a-h][1-8]$/.test(i.from)||!/^[a-h][1-8]$/.test(i.to))return {error:'Invalid square.'};return move(i.from,i.to,i.promotion||'q');}}];tools.forEach(t=>{try{Promise.resolve(context.registerTool(t,{signal:life.signal})).catch(()=>{});}catch{}});return()=>life.abort();},[sound]);
  useEffect(()=>{const onChange=()=>{if(!document.fullscreenElement)setBoardFullscreen(false);};document.addEventListener('fullscreenchange',onChange);return()=>document.removeEventListener('fullscreenchange',onChange);},[]);
  useEffect(()=>{document.body.classList.toggle('board-fullscreen-open',boardFullscreen);return()=>document.body.classList.remove('board-fullscreen-open');},[boardFullscreen]);
- async function toggleBoardFullscreen(){if(boardFullscreen){if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});setBoardFullscreen(false);return;}setBoardFullscreen(true);const el=boardWrap.current;if(el?.requestFullscreen)await el.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}
+ async function toggleBoardFullscreen(){if(boardFullscreen){await exitFullscreen();setBoardFullscreen(false);return;}setBoardFullscreen(true);await enterFullscreen(boardWrap.current);}
  const computerTurn=mode==='computer'&&g.turn()!==human&&!g.isGameOver();
  useEffect(()=>{
   if(!computerTurn||reset)return;
